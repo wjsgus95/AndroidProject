@@ -1,6 +1,8 @@
 package kr.ac.kookmin.androidproject;
 
 
+import android.content.DialogInterface;
+import android.content.DialogInterface.OnClickListener;
 import android.content.SharedPreferences;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -30,6 +32,8 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView accstateText, gyrostateText;
 
+    private Button leftButton, midButton, rightButton;
+
     private SensorManager SM;
 
     private Sensor accSensor;
@@ -39,7 +43,8 @@ public class MainActivity extends AppCompatActivity {
     private SensorEventListener gyroL;
 
     //member
-    private boolean state = false;
+    private boolean listenerstate = false;
+    private int buttonstate = 0;
 
     private String ACCLOG;
     private String GYROLOG;
@@ -47,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
 
     //Gregorian Date and Time Instacne Declaration
     Calendar c = Calendar.getInstance();
-    
+
 
     @Override
     public View findViewById(int id) {
@@ -90,6 +95,12 @@ public class MainActivity extends AppCompatActivity {
 
         accstateText = (TextView) findViewById(R.id.accstateText);
         gyrostateText = (TextView) findViewById(R.id.gyrostateText);
+
+        leftButton = (Button) findViewById(R.id.leftButton);
+        midButton = (Button) findViewById(R.id.midButton);
+        rightButton = (Button) findViewById(R.id.rightButton);
+
+        leftButton.setText("Start");
     }
 
     @Override
@@ -133,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
     private class accListener implements SensorEventListener {
         @Override
         public void onSensorChanged(SensorEvent event) {
-            if (state == true) {
+            if (listenerstate == true) {
                 accxText.setText("AX " + event.values[0]);
                 accyText.setText("AY " + event.values[1]);
                 acczText.setText("AZ " + event.values[2]);
@@ -150,7 +161,7 @@ public class MainActivity extends AppCompatActivity {
     private class gyroListener implements SensorEventListener {
         @Override
         public void onSensorChanged(SensorEvent event) {
-            if (state == true) {
+            if (listenerstate == true) {
                 gyroxText.setText("GX " + event.values[0]);
                 gyroyText.setText("GY " + event.values[1]);
                 gyrozText.setText("GZ " + event.values[2]);
@@ -164,7 +175,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    public void saveLog(SensorEvent event, String FILENAME) {
+    private void saveLog(SensorEvent event, String FILENAME) {
         try {
             Sensor sensor = event.sensor;
             File file = new File(getExternalFilesDir(null), FILENAME);
@@ -186,5 +197,37 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception e) {
 
         }
+    }
+
+    private void onLeftClick() {
+        switch(buttonstate) {
+            case 0 :
+                leftButton.setText("Pause");
+                ACCLOG = "A" + c.get(Calendar.YEAR) + c.get(Calendar.MONTH) + c.get(Calendar.DATE);
+                GYROLOG = "G" + c.get(Calendar.YEAR) + c.get(Calendar.MONTH) + c.get(Calendar.DATE);
+                buttonstate = 1;
+                listenerOff(SM);
+                break;
+            case 1 :
+                leftButton.setText("Resume");
+                listenerOn(SM);
+                break;
+        }
+    }
+
+    private void listenerOn(SensorManager SM) {
+        SM.registerListener(accL, accSensor, SensorManager.SENSOR_DELAY_FASTEST);
+        SM.registerListener(gyroL, gyroSensor, SensorManager.SENSOR_DELAY_FASTEST);
+        listenerstate = true;
+    }
+
+    private void listenerOff(SensorManager SM) {
+        SM.unregisterListener(accL);
+        SM.unregisterListener(gyroL);
+        listenerstate = false;
+    }
+
+    private String putIndex() {
+        return "";
     }
 }
