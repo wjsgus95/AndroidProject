@@ -1,15 +1,58 @@
 package kr.ac.kookmin.androidproject;
 
+
+import android.content.SharedPreferences;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import java.util.*;
+import java.io.*;
+
 
 public class MainActivity extends AppCompatActivity {
+    //class
+    private TextView accxText, accyText, acczText;
+    private TextView gyroxText, gyroyText, gyrozText;
+
+    private TextView accstateText, gyrostateText;
+
+    private SensorManager SM;
+
+    private Sensor accSensor;
+    private Sensor gyroSensor;
+
+    private SensorEventListener accL;
+    private SensorEventListener gyroL;
+
+    //member
+    private boolean state = false;
+
+    private String ACCLOG;
+    private String GYROLOG;
+
+
+    //Gregorian Date and Time Instacne Declaration
+    Calendar c = Calendar.getInstance();
+    
+
+    @Override
+    public View findViewById(int id) {
+        return super.findViewById(id);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,6 +69,27 @@ public class MainActivity extends AppCompatActivity {
                         .setAction("Action", null).show();
             }
         });
+
+        SM = (SensorManager) getSystemService(SENSOR_SERVICE);
+        // Accelerometer Sensor
+
+        accSensor = SM.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        gyroSensor = SM.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+
+        accL = new accListener();
+        gyroL = new gyroListener();
+
+        // Assign TextView
+        accxText = (TextView) findViewById(R.id.accxText);
+        accyText = (TextView) findViewById(R.id.accyText);
+        acczText = (TextView) findViewById(R.id.acczText);
+
+        gyroxText = (TextView) findViewById(R.id.gyroxText);
+        gyroyText = (TextView) findViewById(R.id.gyroyText);
+        gyrozText = (TextView) findViewById(R.id.gyrozText);
+
+        accstateText = (TextView) findViewById(R.id.accstateText);
+        gyrostateText = (TextView) findViewById(R.id.gyrostateText);
     }
 
     @Override
@@ -48,5 +112,79 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        // Resister sensor Listener
+        SM.registerListener(accL, accSensor, SensorManager.SENSOR_DELAY_FASTEST);
+        SM.registerListener(gyroL, gyroSensor, SensorManager.SENSOR_DELAY_FASTEST);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        SM.unregisterListener(accL);
+        SM.unregisterListener(gyroL);
+    }
+
+    private class accListener implements SensorEventListener {
+        @Override
+        public void onSensorChanged(SensorEvent event) {
+            if (state == true) {
+                accxText.setText("AX " + event.values[0]);
+                accyText.setText("AY " + event.values[1]);
+                acczText.setText("AZ " + event.values[2]);
+                saveLog(event, ACCLOG); // Save log whenever sensored
+            }
+        }
+
+        @Override
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        }
+    }
+
+
+    private class gyroListener implements SensorEventListener {
+        @Override
+        public void onSensorChanged(SensorEvent event) {
+            if (state == true) {
+                gyroxText.setText("GX " + event.values[0]);
+                gyroyText.setText("GY " + event.values[1]);
+                gyrozText.setText("GZ " + event.values[2]);
+                saveLog(event, GYROLOG); // Save log whenever sensored
+            }
+        }
+
+        @Override
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        }
+
+    }
+
+    public void saveLog(SensorEvent event, String FILENAME) {
+        try {
+            Sensor sensor = event.sensor;
+            File file = new File(getExternalFilesDir(null), FILENAME);
+            String imuValue = event.values[0] + ":" + event.values[1] + ":" + event.values[2];
+
+            if (sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+                imuValue = imuValue + "A\n";
+                accstateText.setText("Accelerometer Logging...");
+            }
+
+            if (sensor.getType() == Sensor.TYPE_GYROSCOPE) {
+                imuValue = imuValue + "G\n";
+                gyrostateText.setText("Gyroscope Logging...");
+            }
+
+            OutputStream logOut = new FileOutputStream(file, true);
+            logOut.write(imuValue.getBytes());
+            logOut.close();
+        } catch (Exception e) {
+
+        }
     }
 }
