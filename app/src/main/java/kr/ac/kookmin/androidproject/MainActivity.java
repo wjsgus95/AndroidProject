@@ -219,6 +219,7 @@ public class MainActivity extends AppCompatActivity {
             leftButton.setText("Pause");
             listenerOff(SM);
             isPause = true;
+            startenable = false;
         } else {
             if (isPause) {
                 leftButton.setText("Resume");
