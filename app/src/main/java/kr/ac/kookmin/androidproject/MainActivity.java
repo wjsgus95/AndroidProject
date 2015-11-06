@@ -43,8 +43,10 @@ public class MainActivity extends AppCompatActivity {
     private SensorEventListener gyroL;
 
     //member
+    private boolean startenable = true;
+    private boolean stopenable = false;
+    private boolean isPause;
     private boolean listenerstate = false;
-    private int buttonstate = 0;
 
     private String ACCLOG;
     private String GYROLOG;
@@ -101,6 +103,22 @@ public class MainActivity extends AppCompatActivity {
         rightButton = (Button) findViewById(R.id.rightButton);
 
         leftButton.setText("Start");
+        midButton.setText("Stop");
+        rightButton.setText("Tag");
+
+        leftButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                onLeftClick();
+            }
+        });
+
+        midButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                onMidClick();
+            }
+        });
     }
 
     @Override
@@ -128,17 +146,13 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-
-        // Resister sensor Listener
-        SM.registerListener(accL, accSensor, SensorManager.SENSOR_DELAY_FASTEST);
-        SM.registerListener(gyroL, gyroSensor, SensorManager.SENSOR_DELAY_FASTEST);
+        listenerOn(SM);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        SM.unregisterListener(accL);
-        SM.unregisterListener(gyroL);
+        listenerOff(SM);
     }
 
     private class accListener implements SensorEventListener {
@@ -200,18 +214,31 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void onLeftClick() {
-        switch(buttonstate) {
-            case 0 :
-                leftButton.setText("Pause");
-                ACCLOG = "A" + c.get(Calendar.YEAR) + c.get(Calendar.MONTH) + c.get(Calendar.DATE);
-                GYROLOG = "G" + c.get(Calendar.YEAR) + c.get(Calendar.MONTH) + c.get(Calendar.DATE);
-                buttonstate = 1;
-                listenerOff(SM);
-                break;
-            case 1 :
+        if (startenable) {
+            stopenable = true;
+            leftButton.setText("Pause");
+            listenerOff(SM);
+            isPause = true;
+        } else {
+            if (isPause) {
                 leftButton.setText("Resume");
                 listenerOn(SM);
-                break;
+                isPause = false;
+            } else {
+                leftButton.setText("Pause");
+                listenerOff(SM);
+                isPause = true;
+            }
+        }
+    }
+
+    private void onMidClick() {
+        if (stopenable) {
+            //end log
+            startenable = true;
+            leftButton.setText("Start");
+            stopenable = false;
+            listenerOff(SM);
         }
     }
 
@@ -225,9 +252,5 @@ public class MainActivity extends AppCompatActivity {
         SM.unregisterListener(accL);
         SM.unregisterListener(gyroL);
         listenerstate = false;
-    }
-
-    private String putIndex() {
-        return "";
     }
 }
