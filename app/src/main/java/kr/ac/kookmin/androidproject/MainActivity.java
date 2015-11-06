@@ -1,15 +1,11 @@
 package kr.ac.kookmin.androidproject;
 
 
-import android.content.DialogInterface;
-import android.content.DialogInterface.OnClickListener;
-import android.content.SharedPreferences;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.SystemClock;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -20,7 +16,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.util.*;
 import java.io.*;
@@ -28,12 +23,15 @@ import java.io.*;
 
 public class MainActivity extends AppCompatActivity {
     //class
-    private TextView accxText, accyText, acczText;
-    private TextView gyroxText, gyroyText, gyrozText;
 
-    private TextView accstateText, gyrostateText;
+    private TextView imustateText;
 
-    private Button leftButton, midButton, rightButton;
+    private TextView accarText, accirText; //Average Rate And Instant Rate Text
+    private TextView gyroarText, gyroirText;
+
+    private TextView accelerometerText, gyroscopeText;
+
+    private Button leftButton, rightButton;
 
     private SensorManager SM;
 
@@ -43,6 +41,9 @@ public class MainActivity extends AppCompatActivity {
     private SensorEventListener accL;
     private SensorEventListener gyroL;
 
+    private Timer myTimer;
+    TimerTask getRate;
+
     //member
     private boolean startenable = true;
     private boolean stopenable = false;
@@ -50,12 +51,17 @@ public class MainActivity extends AppCompatActivity {
     private boolean listenerstate = false;
     private boolean isFirst = false;
 
+    private String imuValue;
+    private String currentTime;
     private String ACCLOG;
     private String GYROLOG;
 
     private long startTime = 0;
-    private long time = 0;
 
+    private long accTotalCount = 0;
+    private long accInstantCount = 0;
+    private long gyroTotalCount = 0;
+    private long gyroInstantCount = 0;
     //Gregorian Date and Time Instacne Declaration
     Calendar c = Calendar.getInstance();
 
@@ -91,24 +97,26 @@ public class MainActivity extends AppCompatActivity {
         gyroL = new gyroListener();
 
         // Assign TextView
-        accxText = (TextView) findViewById(R.id.accxText);
-        accyText = (TextView) findViewById(R.id.accyText);
-        acczText = (TextView) findViewById(R.id.acczText);
 
-        gyroxText = (TextView) findViewById(R.id.gyroxText);
-        gyroyText = (TextView) findViewById(R.id.gyroyText);
-        gyrozText = (TextView) findViewById(R.id.gyrozText);
+        imustateText = (TextView) findViewById(R.id.imustateText);
 
-        accstateText = (TextView) findViewById(R.id.accstateText);
-        gyrostateText = (TextView) findViewById(R.id.gyrostateText);
+        accarText = (TextView) findViewById(R.id.accarText);
+        accirText = (TextView) findViewById(R.id.accirText);
+
+        gyroarText = (TextView) findViewById(R.id.gyroarText);
+        gyroirText = (TextView) findViewById(R.id.gyroirText);
+
+        accelerometerText = (TextView) findViewById(R.id.accelerometerText);
+        gyroscopeText = (TextView) findViewById(R.id.gyroscopeText);
 
         leftButton = (Button) findViewById(R.id.leftButton);
-        midButton = (Button) findViewById(R.id.midButton);
         rightButton = (Button) findViewById(R.id.rightButton);
 
+        accelerometerText.setText("Accelerometer Response Rate");
+        gyroscopeText.setText("Gyroscope Response Rate");
+
         leftButton.setText("Start");
-        midButton.setText("Stop");
-        rightButton.setText("Tag");
+        rightButton.setText("Stop");
 
         leftButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -117,13 +125,45 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        midButton.setOnClickListener(new View.OnClickListener() {
+        rightButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                onMidClick();
+                onRightClick();
             }
         });
+
+        myTimer = new Timer();
+        myTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                TimerMethod();
+            }
+
+        }, 0, 500);
     }
+
+    private void TimerMethod() {
+        //This method is called directly by the timer
+        //and runs in the same thread as the timer.
+
+        //We call the method that will work with the UI
+        //through the runOnUiThread method.
+        this.runOnUiThread(Timer_Tick);
+    }
+
+    private Runnable Timer_Tick = new Runnable() {
+        public void run() {
+            accarText.setText("Average Rate : " + (accTotalCount * 1000 / (SystemClock.uptimeMillis() - startTime)) + " times / s");
+            gyroarText.setText("Average Rate : " + (gyroTotalCount * 1000 / (SystemClock.uptimeMillis() - startTime)) + " times / s");
+
+            accirText.setText("Instant Rate : " + accInstantCount / 0.5 + " times / s");
+            gyroirText.setText("Instant Rate : " + gyroInstantCount / 0.5 + " times / s");
+
+            accInstantCount = 0;
+            gyroInstantCount = 0;
+        }
+    };
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -163,14 +203,10 @@ public class MainActivity extends AppCompatActivity {
         public void onSensorChanged(SensorEvent event) {
             if (listenerstate) {
 
-                if(isFirst) {
+                if (isFirst) {
                     startTime = SystemClock.uptimeMillis();
                     isFirst = false;
                 }
-
-                accxText.setText("AX " + event.values[0]);
-                accyText.setText("AY " + event.values[1]);
-                acczText.setText("AZ " + event.values[2]);
                 saveLog(event, ACCLOG); // Save log whenever sensored
             }
         }
@@ -185,9 +221,6 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onSensorChanged(SensorEvent event) {
             if (listenerstate) {
-                gyroxText.setText("GX " + event.values[0]);
-                gyroyText.setText("GY " + event.values[1]);
-                gyrozText.setText("GZ " + event.values[2]);
                 saveLog(event, GYROLOG); // Save log whenever sensored
             }
         }
@@ -201,8 +234,18 @@ public class MainActivity extends AppCompatActivity {
     private void saveLog(SensorEvent event, String FILENAME) {
         try {
             File file = new File(getExternalFilesDir(null), FILENAME);
-            String imuValue = event.values[0] + ":" + event.values[1] + ":" + event.values[2] + ":";
-            String currentTime = String.valueOf(SystemClock.uptimeMillis() - startTime) + ":";
+            imuValue = event.values[0] + ":" + event.values[1] + ":" + event.values[2] + ":";
+            currentTime = String.valueOf(SystemClock.uptimeMillis() - startTime) + ":";
+
+            if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+                accTotalCount++;
+                accInstantCount++;
+            }
+
+            if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
+                gyroTotalCount++;
+                gyroInstantCount++;
+            }
 
             OutputStream logOut = new FileOutputStream(file, true);
             logOut.write(currentTime.getBytes());
@@ -218,12 +261,14 @@ public class MainActivity extends AppCompatActivity {
             stopenable = true;
             leftButton.setText("Pause");
             listenerOn(SM);
+
             isPause = true;
             startenable = false;
             isFirst = true;
-            logInit();
-        }
 
+            ACCLOG = new String("A" + setFileName());
+            GYROLOG = new String("G" + setFileName());
+        }
         else {
             if (isPause) {
                 leftButton.setText("Resume");
@@ -237,13 +282,15 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void onMidClick() {
+    private void onRightClick() {
         if (stopenable) {
             // <-- end log method here
             startenable = true;
             leftButton.setText("Start");
             stopenable = false;
             listenerOff(SM);
+            accTotalCount = 0;
+            gyroTotalCount = 0;
         }
     }
 
@@ -251,23 +298,22 @@ public class MainActivity extends AppCompatActivity {
         SM.registerListener(accL, accSensor, SensorManager.SENSOR_DELAY_FASTEST);
         SM.registerListener(gyroL, gyroSensor, SensorManager.SENSOR_DELAY_FASTEST);
         listenerstate = true;
-        accstateText.setText("Accelerometer Active");
-        gyrostateText.setText("Gyroscope Active");
+        imustateText.setText("Sensors Active");
     }
 
     private void listenerOff(SensorManager SM) {
         SM.unregisterListener(accL);
         SM.unregisterListener(gyroL);
         listenerstate = false;
-        accstateText.setText("Accelerometer Idle");
-        gyrostateText.setText("Gyroscope Idle");
+        imustateText.setText("Sensors Idle");
     }
 
-    private void logInit() {
-        ACCLOG = "A";
+    private String setFileName() {
+        String ACCLOG = "";
+
         ACCLOG += c.get(Calendar.YEAR);
 
-        if(c.get(Calendar.MONTH) < 10)
+        if (c.get(Calendar.MONTH) < 10)
             ACCLOG += "0";
         ACCLOG += c.get(Calendar.MONTH) + 1;
 
@@ -279,12 +325,12 @@ public class MainActivity extends AppCompatActivity {
             ACCLOG += "0";
         ACCLOG += c.get(Calendar.HOUR_OF_DAY);
 
-        if(c.get(Calendar.MINUTE) < 10)
+        if (c.get(Calendar.MINUTE) < 10)
             ACCLOG += "0";
         ACCLOG += c.get(Calendar.MINUTE);
 
         ACCLOG += ".txt";
 
-        GYROLOG = "G" + ACCLOG.substring(1);
+        return ACCLOG;
     }
 }
