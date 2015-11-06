@@ -10,6 +10,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.SystemClock;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
@@ -47,10 +48,13 @@ public class MainActivity extends AppCompatActivity {
     private boolean stopenable = false;
     private boolean isPause;
     private boolean listenerstate = false;
+    private boolean isFirst = false;
 
     private String ACCLOG;
     private String GYROLOG;
 
+    private long startTime = 0;
+    private long time = 0;
 
     //Gregorian Date and Time Instacne Declaration
     Calendar c = Calendar.getInstance();
@@ -146,19 +150,24 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        listenerOn(SM);
+        listenerOff(SM);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        listenerOff(SM);
     }
 
     private class accListener implements SensorEventListener {
         @Override
         public void onSensorChanged(SensorEvent event) {
-            if (listenerstate == true) {
+            if (listenerstate) {
+
+                if(isFirst) {
+                    startTime = SystemClock.uptimeMillis();
+                    isFirst = false;
+                }
+
                 accxText.setText("AX " + event.values[0]);
                 accyText.setText("AY " + event.values[1]);
                 acczText.setText("AZ " + event.values[2]);
@@ -175,7 +184,7 @@ public class MainActivity extends AppCompatActivity {
     private class gyroListener implements SensorEventListener {
         @Override
         public void onSensorChanged(SensorEvent event) {
-            if (listenerstate == true) {
+            if (listenerstate) {
                 gyroxText.setText("GX " + event.values[0]);
                 gyroyText.setText("GY " + event.values[1]);
                 gyrozText.setText("GZ " + event.values[2]);
@@ -191,21 +200,12 @@ public class MainActivity extends AppCompatActivity {
 
     private void saveLog(SensorEvent event, String FILENAME) {
         try {
-            Sensor sensor = event.sensor;
             File file = new File(getExternalFilesDir(null), FILENAME);
-            String imuValue = event.values[0] + ":" + event.values[1] + ":" + event.values[2];
-
-            if (sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-                imuValue = imuValue + "A\n";
-                accstateText.setText("Accelerometer Logging...");
-            }
-
-            if (sensor.getType() == Sensor.TYPE_GYROSCOPE) {
-                imuValue = imuValue + "G\n";
-                gyrostateText.setText("Gyroscope Logging...");
-            }
+            String imuValue = event.values[0] + ":" + event.values[1] + ":" + event.values[2] + ":";
+            String currentTime = String.valueOf(SystemClock.uptimeMillis() - startTime) + ":";
 
             OutputStream logOut = new FileOutputStream(file, true);
+            logOut.write(currentTime.getBytes());
             logOut.write(imuValue.getBytes());
             logOut.close();
         } catch (Exception e) {
@@ -217,17 +217,21 @@ public class MainActivity extends AppCompatActivity {
         if (startenable) {
             stopenable = true;
             leftButton.setText("Pause");
-            listenerOff(SM);
+            listenerOn(SM);
             isPause = true;
             startenable = false;
-        } else {
+            isFirst = true;
+            logInit();
+        }
+
+        else {
             if (isPause) {
                 leftButton.setText("Resume");
-                listenerOn(SM);
+                listenerOff(SM);
                 isPause = false;
             } else {
                 leftButton.setText("Pause");
-                listenerOff(SM);
+                listenerOn(SM);
                 isPause = true;
             }
         }
@@ -235,7 +239,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void onMidClick() {
         if (stopenable) {
-            //end log
+            // <-- end log method here
             startenable = true;
             leftButton.setText("Start");
             stopenable = false;
@@ -247,11 +251,40 @@ public class MainActivity extends AppCompatActivity {
         SM.registerListener(accL, accSensor, SensorManager.SENSOR_DELAY_FASTEST);
         SM.registerListener(gyroL, gyroSensor, SensorManager.SENSOR_DELAY_FASTEST);
         listenerstate = true;
+        accstateText.setText("Accelerometer Active");
+        gyrostateText.setText("Gyroscope Active");
     }
 
     private void listenerOff(SensorManager SM) {
         SM.unregisterListener(accL);
         SM.unregisterListener(gyroL);
         listenerstate = false;
+        accstateText.setText("Accelerometer Idle");
+        gyrostateText.setText("Gyroscope Idle");
+    }
+
+    private void logInit() {
+        ACCLOG = "A";
+        ACCLOG += c.get(Calendar.YEAR);
+
+        if(c.get(Calendar.MONTH) < 10)
+            ACCLOG += "0";
+        ACCLOG += c.get(Calendar.MONTH) + 1;
+
+        if (c.get(Calendar.DATE) < 10)
+            ACCLOG += "0";
+        ACCLOG += c.get(Calendar.DATE);
+
+        if (c.get(Calendar.HOUR_OF_DAY) < 10)
+            ACCLOG += "0";
+        ACCLOG += c.get(Calendar.HOUR_OF_DAY);
+
+        if(c.get(Calendar.MINUTE) < 10)
+            ACCLOG += "0";
+        ACCLOG += c.get(Calendar.MINUTE);
+
+        ACCLOG += ".txt";
+
+        GYROLOG = "G" + ACCLOG.substring(1);
     }
 }
