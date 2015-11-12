@@ -28,8 +28,9 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView accarText, accirText; //Average Rate And Instant Rate Text
     private TextView gyroarText, gyroirText;
+    private TextView magnetoarText, magnetoirText;
 
-    private TextView accelerometerText, gyroscopeText;
+    private TextView accelerometerText, gyroscopeText, magnetometerText;
 
     private Button leftButton, rightButton;
 
@@ -37,9 +38,11 @@ public class MainActivity extends AppCompatActivity {
 
     private Sensor accSensor;
     private Sensor gyroSensor;
+    private Sensor magnetoSensor;
 
     private SensorEventListener accL;
     private SensorEventListener gyroL;
+    private SensorEventListener magnetoL;
 
     private Timer myTimer;
     TimerTask getRate;
@@ -49,12 +52,12 @@ public class MainActivity extends AppCompatActivity {
     private boolean stopenable = false;
     private boolean isPause;
     private boolean listenerstate = false;
-    private boolean isFirst = false;
 
     private String imuValue;
     private String currentTime;
     private String ACCLOG;
     private String GYROLOG;
+    private String MAGNETOLOG;
 
     private long startTime = 0;
 
@@ -62,6 +65,8 @@ public class MainActivity extends AppCompatActivity {
     private long accInstantCount = 0;
     private long gyroTotalCount = 0;
     private long gyroInstantCount = 0;
+    private long magnetoInstantCount = 0;
+    private long magnetoTotalCount = 0;
     //Gregorian Date and Time Instacne Declaration
     Calendar c = Calendar.getInstance();
 
@@ -91,10 +96,12 @@ public class MainActivity extends AppCompatActivity {
         // Accelerometer Sensor
 
         accSensor = SM.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        gyroSensor = SM.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        gyroSensor = SM.getDefaultSensor(Sensor.TYPE_GYROSCOPE_UNCALIBRATED);
+        magnetoSensor = SM.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 
         accL = new accListener();
         gyroL = new gyroListener();
+        magnetoL = new magnetoListener();
 
         // Assign TextView
 
@@ -106,14 +113,19 @@ public class MainActivity extends AppCompatActivity {
         gyroarText = (TextView) findViewById(R.id.gyroarText);
         gyroirText = (TextView) findViewById(R.id.gyroirText);
 
+        magnetoarText = (TextView) findViewById(R.id.magnetoarText);
+        magnetoirText = (TextView) findViewById(R.id.magnetoirText);
+
         accelerometerText = (TextView) findViewById(R.id.accelerometerText);
         gyroscopeText = (TextView) findViewById(R.id.gyroscopeText);
+        magnetometerText = (TextView) findViewById(R.id.magnetometerText);
 
         leftButton = (Button) findViewById(R.id.leftButton);
         rightButton = (Button) findViewById(R.id.rightButton);
 
         accelerometerText.setText("Accelerometer Response Rate");
         gyroscopeText.setText("Gyroscope Response Rate");
+        magnetometerText.setText("Magnetometer Response Rate");
 
         leftButton.setText("Start");
         rightButton.setText("Stop");
@@ -155,12 +167,15 @@ public class MainActivity extends AppCompatActivity {
         public void run() {
             accarText.setText("Average Rate : " + (accTotalCount * 1000 / (SystemClock.uptimeMillis() - startTime)) + " times / s");
             gyroarText.setText("Average Rate : " + (gyroTotalCount * 1000 / (SystemClock.uptimeMillis() - startTime)) + " times / s");
+            magnetoarText.setText("Average Rate : " + (magnetoTotalCount * 1000 / (SystemClock.uptimeMillis() - startTime)) + " times / s");
 
             accirText.setText("Instant Rate : " + accInstantCount / 0.5 + " times / s");
             gyroirText.setText("Instant Rate : " + gyroInstantCount / 0.5 + " times / s");
+            magnetoirText.setText("Instant Rate : " + magnetoInstantCount / 0.5 + " times / s");
 
             accInstantCount = 0;
             gyroInstantCount = 0;
+            magnetoInstantCount = 0;
         }
     };
 
@@ -190,7 +205,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        listenerOff(SM);
+        listenerOn(SM);
     }
 
     @Override
@@ -198,15 +213,17 @@ public class MainActivity extends AppCompatActivity {
         super.onPause();
     }
 
+    @Override
+    protected void onStop() {
+        super.onStop();
+        listenerOff(SM);
+    }
+
     private class accListener implements SensorEventListener {
         @Override
         public void onSensorChanged(SensorEvent event) {
             if (listenerstate) {
-
-                if (isFirst) {
-                    startTime = SystemClock.uptimeMillis();
-                    isFirst = false;
-                }
+                saveLogFormat(event, ACCLOG);
                 saveLog(event, ACCLOG); // Save log whenever sensored
             }
         }
@@ -221,6 +238,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onSensorChanged(SensorEvent event) {
             if (listenerstate) {
+                saveLogFormat(event, GYROLOG);
                 saveLog(event, GYROLOG); // Save log whenever sensored
             }
         }
@@ -231,20 +249,70 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    private class magnetoListener implements SensorEventListener {
+        @Override
+        public void onSensorChanged(SensorEvent event) {
+            if(listenerstate) {
+                saveLogFormat(event, MAGNETOLOG);
+                saveLog(event, MAGNETOLOG);
+            }
+        }
+
+        @Override
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        }
+    }
+
+    private void saveLogFormat(SensorEvent event, String FILENAME) {
+        try {
+            File file = new File(getExternalFilesDir(null), FILENAME);
+
+            String Parameter = new String();
+            String Unit = new String();
+
+            if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+                Parameter = "Time,AX,AY,AZ\n";
+                Unit = "ms,m/s^2,m/s^2,m/s^2\n";
+            }
+
+            if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE_UNCALIBRATED) {
+                Parameter = "Time,GX,GY,GZ\n";
+                Unit = "ms,rad/s,rad/s,rad/s\n";
+            }
+
+            if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
+                Parameter = "Time,MX,MY,MZ\n";
+                Unit = "ms,uT,uT,uT\n";
+            }
+
+            OutputStream logOut = new FileOutputStream(file, true);
+            logOut.write(Parameter.getBytes());
+            logOut.write(Unit.getBytes());
+            logOut.close();
+        } catch (Exception e) {
+
+        }
+    }
+
     private void saveLog(SensorEvent event, String FILENAME) {
         try {
             File file = new File(getExternalFilesDir(null), FILENAME);
-            imuValue = event.values[0] + ":" + event.values[1] + ":" + event.values[2] + ":";
-            currentTime = String.valueOf(SystemClock.uptimeMillis() - startTime) + ":";
+            imuValue = event.values[0] + "," + event.values[1] + "," + event.values[2] + "\n";
+            currentTime = String.valueOf(SystemClock.uptimeMillis() - startTime) + ",";
 
             if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
                 accTotalCount++;
                 accInstantCount++;
             }
 
-            if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
+            if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE_UNCALIBRATED) {
                 gyroTotalCount++;
                 gyroInstantCount++;
+            }
+
+            if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
+                magnetoTotalCount++;
+                magnetoInstantCount++;
             }
 
             OutputStream logOut = new FileOutputStream(file, true);
@@ -264,10 +332,12 @@ public class MainActivity extends AppCompatActivity {
 
             isPause = true;
             startenable = false;
-            isFirst = true;
 
             ACCLOG = new String("A" + setFileName());
             GYROLOG = new String("G" + setFileName());
+            MAGNETOLOG = new String("M" + setFileName());
+
+            startTime = SystemClock.uptimeMillis();
         }
         else {
             if (isPause) {
@@ -291,12 +361,14 @@ public class MainActivity extends AppCompatActivity {
             listenerOff(SM);
             accTotalCount = 0;
             gyroTotalCount = 0;
+            magnetoTotalCount = 0;
         }
     }
 
     private void listenerOn(SensorManager SM) {
         SM.registerListener(accL, accSensor, SensorManager.SENSOR_DELAY_FASTEST);
         SM.registerListener(gyroL, gyroSensor, SensorManager.SENSOR_DELAY_FASTEST);
+        SM.registerListener(magnetoL, magnetoSensor, SensorManager.SENSOR_DELAY_FASTEST);
         listenerstate = true;
         imustateText.setText("Sensors Active");
     }
@@ -304,33 +376,34 @@ public class MainActivity extends AppCompatActivity {
     private void listenerOff(SensorManager SM) {
         SM.unregisterListener(accL);
         SM.unregisterListener(gyroL);
+        SM.unregisterListener(magnetoL);
         listenerstate = false;
         imustateText.setText("Sensors Idle");
     }
 
     private String setFileName() {
-        String ACCLOG = "";
+        String LOG = "";
 
-        ACCLOG += c.get(Calendar.YEAR);
+        LOG += c.get(Calendar.YEAR);
 
         if (c.get(Calendar.MONTH) < 10)
-            ACCLOG += "0";
-        ACCLOG += c.get(Calendar.MONTH) + 1;
+            LOG += "0";
+        LOG += c.get(Calendar.MONTH) + 1;
 
         if (c.get(Calendar.DATE) < 10)
-            ACCLOG += "0";
-        ACCLOG += c.get(Calendar.DATE);
+            LOG += "0";
+        LOG += c.get(Calendar.DATE);
 
         if (c.get(Calendar.HOUR_OF_DAY) < 10)
-            ACCLOG += "0";
-        ACCLOG += c.get(Calendar.HOUR_OF_DAY);
+            LOG += "0";
+        LOG += c.get(Calendar.HOUR_OF_DAY);
 
         if (c.get(Calendar.MINUTE) < 10)
-            ACCLOG += "0";
-        ACCLOG += c.get(Calendar.MINUTE);
+            LOG += "0";
+        LOG += c.get(Calendar.MINUTE);
 
-        ACCLOG += ".txt";
+        LOG += ".csv";
 
-        return ACCLOG;
+        return LOG;
     }
 }
