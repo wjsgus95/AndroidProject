@@ -1,10 +1,6 @@
 package kr.ac.kookmin.androidproject;
 
 
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.support.design.widget.FloatingActionButton;
@@ -19,7 +15,7 @@ import android.widget.TextView;
 
 import java.util.*;
 import java.io.*;
-
+import android.hardware.*;
 
 public class MainActivity extends AppCompatActivity {
     //class
@@ -47,7 +43,7 @@ public class MainActivity extends AppCompatActivity {
     private Timer myTimer;
     TimerTask getRate;
 
-    //member
+    //members
     private boolean startenable = true;
     private boolean stopenable = false;
     private boolean isPause;
@@ -67,9 +63,7 @@ public class MainActivity extends AppCompatActivity {
     private long gyroInstantCount = 0;
     private long magnetoInstantCount = 0;
     private long magnetoTotalCount = 0;
-    //Gregorian Date and Time Instacne Declaration
-    Calendar c = Calendar.getInstance();
-
+    
 
     @Override
     public View findViewById(int id) {
@@ -223,8 +217,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onSensorChanged(SensorEvent event) {
             if (listenerstate) {
-                saveLogFormat(event, ACCLOG);
-                saveLog(event, ACCLOG); // Save log whenever sensored
+                saveLog(event, ACCLOG);
             }
         }
 
@@ -238,7 +231,6 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onSensorChanged(SensorEvent event) {
             if (listenerstate) {
-                saveLogFormat(event, GYROLOG);
                 saveLog(event, GYROLOG); // Save log whenever sensored
             }
         }
@@ -253,7 +245,6 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onSensorChanged(SensorEvent event) {
             if(listenerstate) {
-                saveLogFormat(event, MAGNETOLOG);
                 saveLog(event, MAGNETOLOG);
             }
         }
@@ -263,24 +254,24 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void saveLogFormat(SensorEvent event, String FILENAME) {
+    private void saveLogFormat(String FILENAME) {
         try {
             File file = new File(getExternalFilesDir(null), FILENAME);
 
             String Parameter = new String();
             String Unit = new String();
 
-            if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+            if (FILENAME == "ACCLOG") {
                 Parameter = "Time,AX,AY,AZ\n";
                 Unit = "ms,m/s^2,m/s^2,m/s^2\n";
             }
 
-            if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE_UNCALIBRATED) {
+            if (FILENAME == "GYROLOG") {
                 Parameter = "Time,GX,GY,GZ\n";
                 Unit = "ms,rad/s,rad/s,rad/s\n";
             }
 
-            if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
+            if (FILENAME == "MAGNETOLOG") {
                 Parameter = "Time,MX,MY,MZ\n";
                 Unit = "ms,uT,uT,uT\n";
             }
@@ -337,6 +328,10 @@ public class MainActivity extends AppCompatActivity {
             GYROLOG = new String("G" + setFileName());
             MAGNETOLOG = new String("M" + setFileName());
 
+            saveLogFormat(ACCLOG);
+            saveLogFormat(GYROLOG);
+            saveLogFormat(MAGNETOLOG);
+
             startTime = SystemClock.uptimeMillis();
         }
         else {
@@ -354,7 +349,6 @@ public class MainActivity extends AppCompatActivity {
 
     private void onRightClick() {
         if (stopenable) {
-            // <-- end log method here
             startenable = true;
             leftButton.setText("Start");
             stopenable = false;
@@ -382,6 +376,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String setFileName() {
+
+         //Gregorian Date and Time Instacne Declaration
+        Calendar c = Calendar.getInstance();
+
         String LOG = "";
 
         LOG += c.get(Calendar.YEAR);
