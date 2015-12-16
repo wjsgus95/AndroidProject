@@ -1,1 +1,1 @@
-vi /home/jason/test/AndroidProject/app/src/main/java/kr/ac/kookmin/androidproject/MainActivity.java
+vi ./app/src/main/java/kr/ac/kookmin/androidproject/MainActivity.java
