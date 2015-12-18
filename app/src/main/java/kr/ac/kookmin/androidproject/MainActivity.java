@@ -261,17 +261,17 @@ public class MainActivity extends AppCompatActivity {
             String Parameter = new String();
             String Unit = new String();
 
-            if (FILENAME == "ACCLOG") {
+            if (FILENAME == ACCLOG) {
                 Parameter = "Time,AX,AY,AZ\n";
                 Unit = "ms,m/s^2,m/s^2,m/s^2\n";
             }
 
-            if (FILENAME == "GYROLOG") {
+            if (FILENAME == GYROLOG) {
                 Parameter = "Time,GX,GY,GZ\n";
                 Unit = "ms,rad/s,rad/s,rad/s\n";
             }
 
-            if (FILENAME == "MAGNETOLOG") {
+            if (FILENAME == MAGNETOLOG) {
                 Parameter = "Time,MX,MY,MZ\n";
                 Unit = "ms,uT,uT,uT\n";
             }

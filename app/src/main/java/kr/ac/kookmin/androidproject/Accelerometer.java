@@ -1,4 +1,4 @@
-
+/*
 package kr.ac.kookmin.androidproject;
 
 
@@ -30,3 +30,4 @@ public class Accelerometer {
         zvalue = event.values[2];
     }
 }
+*/

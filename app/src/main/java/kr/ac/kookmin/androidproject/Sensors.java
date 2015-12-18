@@ -1,4 +1,6 @@
+/*
 package kr.ac.kookmin.androidproject;
+
 
 
 import android.os.Bundle;
@@ -24,4 +26,4 @@ public class Sensors {
     private class Magnetometer magnetometer = new Magnetometer();
     }
 
-        
+*/
